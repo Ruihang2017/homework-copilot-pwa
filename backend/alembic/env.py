@@ -1,4 +1,5 @@
 import asyncio
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import pool
@@ -6,11 +7,19 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
+from dotenv import load_dotenv
 
 from app.core.database import Base
 from app.models import *  # noqa: F401, F403
 
+# Load environment variables from .env
+load_dotenv()
+
 config = context.config
+
+# Override the sqlalchemy.url with the one from .env
+if os.getenv("DATABASE_URL"):
+    config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

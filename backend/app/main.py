@@ -11,11 +11,13 @@ from app.routers import auth, profiles, questions
 
 settings = get_settings()
 
+# Create upload directory if it doesn't exist (needed before mounting static files)
+os.makedirs(settings.upload_dir, exist_ok=True)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: create upload directory
-    os.makedirs(settings.upload_dir, exist_ok=True)
+    # Startup: nothing needed here anymore (directory created above)
     yield
     # Shutdown: cleanup if needed
 

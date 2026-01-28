@@ -83,22 +83,22 @@ async def verify_profile_ownership(
         .options(selectinload(ChildProfile.global_state))
     )
     profile = result.scalar_one_or_none()
-    
+
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Profile not found",
         )
-    
+
     return profile
 
 
 # Endpoints
 @router.post("/analyze", response_model=QuestionResponse)
 async def analyze_homework(
+    current_user: CurrentUser,
     image: UploadFile = File(...),
     child_profile_id: str = Form(...),
-    current_user: CurrentUser = Depends(),
     db: AsyncSession = Depends(get_db),
 ):
     """Analyze a homework image and return guidance."""
@@ -106,40 +106,40 @@ async def analyze_homework(
     profile = await verify_profile_ownership(
         uuid.UUID(child_profile_id), current_user, db
     )
-    
+
     if not profile.global_state:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Profile has no global state configured",
         )
-    
+
     # Validate image
     if not image.content_type or not image.content_type.startswith("image/"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid file type. Please upload an image.",
         )
-    
+
     # Read image data
     image_data = await image.read()
-    
+
     if len(image_data) > settings.max_upload_size:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Image too large. Maximum size is {settings.max_upload_size // (1024*1024)}MB",
         )
-    
+
     # Save image to disk
     image_filename = f"{uuid.uuid4()}.jpg"
     image_path = os.path.join(settings.upload_dir, image_filename)
-    
+
     async with aiofiles.open(image_path, "wb") as f:
         await f.write(image_data)
-    
+
     # Compile policy (no topic state for first question on a topic)
     system_prompt = compile_policy(profile.global_state, None)
     user_prompt = compile_analysis_prompt()
-    
+
     # Analyze with OpenAI
     try:
         openai_client = get_openai_client()
@@ -154,7 +154,7 @@ async def analyze_homework(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Analysis failed: {str(e)}",
         )
-    
+
     # Create question record
     question = Question(
         child_profile_id=profile.id,
@@ -165,7 +165,7 @@ async def analyze_homework(
     db.add(question)
     await db.commit()
     await db.refresh(question)
-    
+
     # Ensure topic state exists for future questions
     await get_or_create_topic_state(
         db,
@@ -173,7 +173,7 @@ async def analyze_homework(
         analysis.subject,
         analysis.topic,
     )
-    
+
     return QuestionResponse(
         id=str(question.id),
         child_profile_id=str(question.child_profile_id),
@@ -207,21 +207,21 @@ async def get_question(
         .options(selectinload(Question.child_profile))
     )
     question = result.scalar_one_or_none()
-    
+
     if not question:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Question not found",
         )
-    
+
     if question.child_profile.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied",
         )
-    
+
     response_data = question.response_json
-    
+
     return QuestionResponse(
         id=str(question.id),
         child_profile_id=str(question.child_profile_id),
@@ -231,11 +231,13 @@ async def get_question(
             subject=response_data.get("subject", "unknown"),
             topic=response_data.get("topic", question.topic_key),
             parent_context=ParentContextResponse(
-                what_it_tests=response_data.get("parent_context", {}).get("what_it_tests", []),
+                what_it_tests=response_data.get("parent_context", {}).get(
+                    "what_it_tests", []
+                ),
                 key_idea=response_data.get("parent_context", {}).get("key_idea", ""),
             ),
             hints=[
-                HintResponse(stage=h.get("stage", i+1), text=h.get("text", ""))
+                HintResponse(stage=h.get("stage", i + 1), text=h.get("text", ""))
                 for i, h in enumerate(response_data.get("hints", []))
             ],
             common_mistakes=response_data.get("common_mistakes", []),
@@ -259,19 +261,19 @@ async def submit_feedback(
         .options(selectinload(Question.child_profile))
     )
     question = result.scalar_one_or_none()
-    
+
     if not question:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Question not found",
         )
-    
+
     if question.child_profile.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied",
         )
-    
+
     # Create feedback event
     feedback = FeedbackEvent(
         question_id=question.id,
@@ -282,10 +284,10 @@ async def submit_feedback(
     db.add(feedback)
     await db.commit()
     await db.refresh(feedback)
-    
+
     # Process feedback and update topic state
     await process_feedback(db, feedback)
-    
+
     return FeedbackResponse(
         id=str(feedback.id),
         question_id=str(feedback.question_id),
@@ -305,7 +307,7 @@ async def get_question_history(
     """Get question history for a child profile."""
     # Verify profile ownership
     profile = await verify_profile_ownership(profile_id, current_user, db)
-    
+
     # Get questions
     result = await db.execute(
         select(Question)
@@ -315,7 +317,7 @@ async def get_question_history(
         .offset(offset)
     )
     questions = result.scalars().all()
-    
+
     return [
         QuestionResponse(
             id=str(q.id),
@@ -326,11 +328,15 @@ async def get_question_history(
                 subject=q.response_json.get("subject", "unknown"),
                 topic=q.response_json.get("topic", q.topic_key),
                 parent_context=ParentContextResponse(
-                    what_it_tests=q.response_json.get("parent_context", {}).get("what_it_tests", []),
-                    key_idea=q.response_json.get("parent_context", {}).get("key_idea", ""),
+                    what_it_tests=q.response_json.get("parent_context", {}).get(
+                        "what_it_tests", []
+                    ),
+                    key_idea=q.response_json.get("parent_context", {}).get(
+                        "key_idea", ""
+                    ),
                 ),
                 hints=[
-                    HintResponse(stage=h.get("stage", i+1), text=h.get("text", ""))
+                    HintResponse(stage=h.get("stage", i + 1), text=h.get("text", ""))
                     for i, h in enumerate(q.response_json.get("hints", []))
                 ],
                 common_mistakes=q.response_json.get("common_mistakes", []),

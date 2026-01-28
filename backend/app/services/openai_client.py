@@ -47,26 +47,26 @@ class OpenAIClient:
         user_prompt: str,
     ) -> AnalysisResponse:
         """
-        Analyze a homework image using GPT-4o-mini vision.
-        
+        Analyze a homework image using OpenAI vision model.
+
         Args:
             image_data: Raw image bytes
             system_prompt: The policy-compiled system prompt
             user_prompt: The analysis instructions
-        
+
         Returns:
             Parsed AnalysisResponse
         """
         # Encode image to base64
         base64_image = base64.b64encode(image_data).decode("utf-8")
-        
+
         # Determine image type (assume JPEG for now)
         image_url = f"data:image/jpeg;base64,{base64_image}"
-        
+
         # Call the API
-        response = await self.client.chat.completions.create(
+        response = await self.client.responses.create(
             model=self.model,
-            messages=[
+            input=[
                 {
                     "role": "system",
                     "content": system_prompt,
@@ -75,31 +75,28 @@ class OpenAIClient:
                     "role": "user",
                     "content": [
                         {
-                            "type": "text",
+                            "type": "input_text",
                             "text": user_prompt,
                         },
                         {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": image_url,
-                                "detail": "high",
-                            },
+                            "type": "input_image",
+                            "image_url": image_url,
                         },
                     ],
                 },
             ],
-            max_tokens=2000,
+            max_output_tokens=8000,
             temperature=0.3,  # Lower temperature for more consistent outputs
         )
-        
+
         # Parse the response
-        content = response.choices[0].message.content
+        content = response.output_text
         if not content:
             raise ValueError("Empty response from OpenAI")
-        
+        print(f"Content: {content}")
         # Extract JSON from response (handle potential markdown code blocks)
         json_str = self._extract_json(content)
-        
+
         # Parse and validate
         try:
             data = json.loads(json_str)
@@ -117,14 +114,14 @@ class OpenAIClient:
         matches = re.findall(code_block_pattern, content)
         if matches:
             return matches[0].strip()
-        
+
         # Try to find raw JSON object
         json_pattern = r"\{[\s\S]*\}"
         matches = re.findall(json_pattern, content)
         if matches:
             # Return the longest match (most likely the full JSON)
             return max(matches, key=len)
-        
+
         # Return as-is and let JSON parser handle it
         return content.strip()
 
@@ -144,22 +141,22 @@ Your previous response was:
 
 Respond with the corrected JSON only."""
 
-        response = await self.client.chat.completions.create(
+        response = await self.client.responses.create(
             model=self.model,
-            messages=[
+            input=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
                 {"role": "assistant", "content": previous_response},
                 {"role": "user", "content": fix_prompt},
             ],
-            max_tokens=2000,
+            max_output_tokens=8000,
             temperature=0.1,
         )
-        
-        content = response.choices[0].message.content
+
+        content = response.output_text
         if not content:
             raise ValueError("Empty response from OpenAI on retry")
-        
+        print(f"Content: {content}")
         json_str = self._extract_json(content)
         data = json.loads(json_str)
         return AnalysisResponse(**data)

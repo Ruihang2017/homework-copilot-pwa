@@ -17,6 +17,55 @@ AI-powered homework assistant that helps parents guide their children through ho
 - **AI**: OpenAI GPT-4o-mini with vision
 - **Auth**: Google OAuth, GitHub OAuth, Email/Password
 
+## Architecture Overview
+
+```mermaid
+graph TB
+    subgraph frontend [Frontend - React PWA]
+        UI[Mobile-First UI]
+        Camera[Camera Capture]
+        Auth_UI[Auth Components]
+        PWA[Service Worker]
+    end
+    
+    subgraph backend [Backend - FastAPI]
+        API[REST API]
+        AuthService[Auth Service]
+        PolicyCompiler[Policy Compiler]
+        TopicClassifier[Topic Classifier]
+        StateManager[State Manager]
+    end
+    
+    subgraph external [External Services]
+        OpenAI[OpenAI GPT-4o-mini]
+        GoogleOAuth[Google OAuth]
+        GitHubOAuth[GitHub OAuth]
+    end
+    
+    subgraph database [PostgreSQL]
+        Users[(users)]
+        Profiles[(child_profiles)]
+        GlobalState[(user_global_state)]
+        TopicState[(child_topic_state)]
+        Questions[(questions)]
+        Feedback[(feedback_events)]
+    end
+    
+    UI --> API
+    Camera --> API
+    Auth_UI --> AuthService
+    API --> PolicyCompiler
+    API --> TopicClassifier
+    API --> StateManager
+    PolicyCompiler --> OpenAI
+    AuthService --> GoogleOAuth
+    AuthService --> GitHubOAuth
+    StateManager --> TopicState
+    StateManager --> GlobalState
+    API --> Questions
+    API --> Feedback
+```
+
 ## Quick Start
 
 ### Prerequisites

@@ -26,9 +26,14 @@ settings = get_settings()
 
 
 # Schemas
-class HintResponse(BaseModel):
-    stage: int
-    text: str
+class SolutionStepResponse(BaseModel):
+    step: int
+    title: str
+    explanation: str
+
+
+class TeachingTipResponse(BaseModel):
+    tip: str
 
 
 class ParentContextResponse(BaseModel):
@@ -36,12 +41,48 @@ class ParentContextResponse(BaseModel):
     key_idea: str
 
 
+# Diagram schemas for geometry questions
+class DiagramLabelResponse(BaseModel):
+    text: str
+    position: str
+
+
+class DiagramViewBoxResponse(BaseModel):
+    width: int
+    height: int
+    padding: int = 20
+
+
+class DiagramElementResponse(BaseModel):
+    id: str
+    type: str
+    highlightSteps: list[int] = []
+    points: list[list[float]] | None = None
+    center: list[float] | None = None
+    radius: float | None = None
+    startAngle: float | None = None
+    endAngle: float | None = None
+    position: list[float] | None = None
+    vertex: list[float] | None = None
+    rays: list[list[float]] | None = None
+    style: str | None = None
+    label: DiagramLabelResponse | None = None
+    labels: list[DiagramLabelResponse] | None = None
+
+
+class DiagramSpecResponse(BaseModel):
+    viewBox: DiagramViewBoxResponse
+    elements: list[DiagramElementResponse]
+
+
 class AnalysisResponseSchema(BaseModel):
     subject: str
     topic: str
     parent_context: ParentContextResponse
-    hints: list[HintResponse]
+    solution_steps: list[SolutionStepResponse]
+    teaching_tips: list[TeachingTipResponse]
     common_mistakes: list[str]
+    diagram: DiagramSpecResponse | None = None
 
 
 class QuestionResponse(BaseModel):
@@ -174,6 +215,36 @@ async def analyze_homework(
         analysis.topic,
     )
 
+    # Build diagram response if present
+    diagram_response = None
+    if analysis.diagram:
+        diagram_response = DiagramSpecResponse(
+            viewBox=DiagramViewBoxResponse(
+                width=analysis.diagram.viewBox.width,
+                height=analysis.diagram.viewBox.height,
+                padding=analysis.diagram.viewBox.padding,
+            ),
+            elements=[
+                DiagramElementResponse(
+                    id=e.id,
+                    type=e.type,
+                    highlightSteps=e.highlightSteps,
+                    points=e.points,
+                    center=e.center,
+                    radius=e.radius,
+                    startAngle=e.startAngle,
+                    endAngle=e.endAngle,
+                    position=e.position,
+                    vertex=e.vertex,
+                    rays=e.rays,
+                    style=e.style,
+                    label=DiagramLabelResponse(text=e.label.text, position=e.label.position) if e.label else None,
+                    labels=[DiagramLabelResponse(text=l.text, position=l.position) for l in e.labels] if e.labels else None,
+                )
+                for e in analysis.diagram.elements
+            ],
+        )
+
     return QuestionResponse(
         id=str(question.id),
         child_profile_id=str(question.child_profile_id),
@@ -186,8 +257,15 @@ async def analyze_homework(
                 what_it_tests=analysis.parent_context.what_it_tests,
                 key_idea=analysis.parent_context.key_idea,
             ),
-            hints=[HintResponse(stage=h.stage, text=h.text) for h in analysis.hints],
+            solution_steps=[
+                SolutionStepResponse(step=s.step, title=s.title, explanation=s.explanation)
+                for s in analysis.solution_steps
+            ],
+            teaching_tips=[
+                TeachingTipResponse(tip=t.tip) for t in analysis.teaching_tips
+            ],
             common_mistakes=analysis.common_mistakes,
+            diagram=diagram_response,
         ),
         created_at=question.created_at,
     )
@@ -236,11 +314,20 @@ async def get_question(
                 ),
                 key_idea=response_data.get("parent_context", {}).get("key_idea", ""),
             ),
-            hints=[
-                HintResponse(stage=h.get("stage", i + 1), text=h.get("text", ""))
-                for i, h in enumerate(response_data.get("hints", []))
+            solution_steps=[
+                SolutionStepResponse(
+                    step=s.get("step", i + 1),
+                    title=s.get("title", ""),
+                    explanation=s.get("explanation", ""),
+                )
+                for i, s in enumerate(response_data.get("solution_steps", []))
+            ],
+            teaching_tips=[
+                TeachingTipResponse(tip=t.get("tip", ""))
+                for t in response_data.get("teaching_tips", [])
             ],
             common_mistakes=response_data.get("common_mistakes", []),
+            diagram=_parse_diagram_from_json(response_data),
         ),
         created_at=question.created_at,
     )
@@ -296,6 +383,47 @@ async def submit_feedback(
     )
 
 
+def _parse_diagram_from_json(response_data: dict) -> DiagramSpecResponse | None:
+    """Parse diagram from stored JSON response data."""
+    if not response_data.get("diagram"):
+        return None
+    
+    diagram_data = response_data["diagram"]
+    viewbox = diagram_data.get("viewBox", {})
+    return DiagramSpecResponse(
+        viewBox=DiagramViewBoxResponse(
+            width=viewbox.get("width", 400),
+            height=viewbox.get("height", 300),
+            padding=viewbox.get("padding", 20),
+        ),
+        elements=[
+            DiagramElementResponse(
+                id=e.get("id", f"element_{i}"),
+                type=e.get("type", "unknown"),
+                highlightSteps=e.get("highlightSteps", []),
+                points=e.get("points"),
+                center=e.get("center"),
+                radius=e.get("radius"),
+                startAngle=e.get("startAngle"),
+                endAngle=e.get("endAngle"),
+                position=e.get("position"),
+                vertex=e.get("vertex"),
+                rays=e.get("rays"),
+                style=e.get("style"),
+                label=DiagramLabelResponse(
+                    text=e["label"].get("text", ""),
+                    position=e["label"].get("position", "center"),
+                ) if e.get("label") else None,
+                labels=[
+                    DiagramLabelResponse(text=l.get("text", ""), position=l.get("position", "center"))
+                    for l in e.get("labels", [])
+                ] if e.get("labels") else None,
+            )
+            for i, e in enumerate(diagram_data.get("elements", []))
+        ],
+    )
+
+
 @router.get("/profile/{profile_id}/history", response_model=list[QuestionResponse])
 async def get_question_history(
     profile_id: uuid.UUID,
@@ -335,11 +463,20 @@ async def get_question_history(
                         "key_idea", ""
                     ),
                 ),
-                hints=[
-                    HintResponse(stage=h.get("stage", i + 1), text=h.get("text", ""))
-                    for i, h in enumerate(q.response_json.get("hints", []))
+                solution_steps=[
+                    SolutionStepResponse(
+                        step=s.get("step", i + 1),
+                        title=s.get("title", ""),
+                        explanation=s.get("explanation", ""),
+                    )
+                    for i, s in enumerate(q.response_json.get("solution_steps", []))
+                ],
+                teaching_tips=[
+                    TeachingTipResponse(tip=t.get("tip", ""))
+                    for t in q.response_json.get("teaching_tips", [])
                 ],
                 common_mistakes=q.response_json.get("common_mistakes", []),
+                diagram=_parse_diagram_from_json(q.response_json),
             ),
             created_at=q.created_at,
         )

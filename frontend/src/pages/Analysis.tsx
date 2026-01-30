@@ -4,13 +4,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { api, ApiError } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion'
 import { useToast } from '@/hooks/use-toast'
+import DiagramRenderer from '@/components/DiagramRenderer'
 import type { Question, FeedbackEventType } from '@/types'
 import {
   ArrowLeft,
@@ -23,6 +18,9 @@ import {
   Minus,
   Check,
   HelpCircle,
+  BookOpen,
+  GraduationCap,
+  Shapes,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -39,7 +37,7 @@ export default function Analysis() {
   const [question, setQuestion] = useState<Question | null>(null)
   const [loading, setLoading] = useState(true)
   const [submittingFeedback, setSubmittingFeedback] = useState<FeedbackEventType | null>(null)
-  const [expandedHint, setExpandedHint] = useState<string>('hint-1')
+  const [activeStep, setActiveStep] = useState<number | null>(1) // Start with step 1 active
   const { token } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -110,6 +108,7 @@ export default function Analysis() {
   }
 
   const { response_json: analysis } = question
+  const hasDiagram = analysis.diagram && analysis.diagram.elements.length > 0
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
@@ -155,49 +154,131 @@ export default function Analysis() {
         </CardContent>
       </Card>
 
-      {/* Progressive Hints */}
-      <Card className="glass">
+      {/* Interactive Diagram (if present) */}
+      {hasDiagram && (
+        <Card className="glass border-accent/30">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2 text-accent">
+              <Shapes className="w-5 h-5" />
+              <CardTitle className="text-lg">Interactive Diagram</CardTitle>
+            </div>
+            <CardDescription>
+              Click on steps below to highlight related parts
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DiagramRenderer
+              diagram={analysis.diagram!}
+              activeStep={activeStep}
+              className="rounded-lg overflow-hidden"
+            />
+            {/* Step selector buttons */}
+            <div className="flex flex-wrap gap-2 mt-4 justify-center">
+              <Button
+                variant={activeStep === null ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveStep(null)}
+                className="text-xs"
+              >
+                Show All
+              </Button>
+              {analysis.solution_steps.map((step) => (
+                <Button
+                  key={step.step}
+                  variant={activeStep === step.step ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setActiveStep(step.step)}
+                  className="text-xs"
+                >
+                  Step {step.step}
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Step-by-Step Solution */}
+      <Card className="glass border-accent/30">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2 text-accent">
-            <Lightbulb className="w-5 h-5" />
-            <CardTitle className="text-lg">Progressive Hints</CardTitle>
+            <BookOpen className="w-5 h-5" />
+            <CardTitle className="text-lg">Step-by-Step Solution</CardTitle>
           </div>
           <CardDescription>
-            Reveal hints one at a time to guide without giving away the answer
+            {hasDiagram ? 'Click a step to highlight it in the diagram above' : 'Follow these steps to solve the problem'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Accordion
-            type="single"
-            collapsible
-            value={expandedHint}
-            onValueChange={setExpandedHint}
-          >
-            {analysis.hints.map((hint, index) => (
-              <AccordionItem key={hint.stage} value={`hint-${hint.stage}`}>
-                <AccordionTrigger className="hover:no-underline">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={cn(
-                        'w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold',
-                        index === 0
-                          ? 'bg-accent text-accent-foreground'
-                          : 'bg-muted text-muted-foreground'
-                      )}
-                    >
-                      {hint.stage}
-                    </div>
-                    <span>Hint {hint.stage}</span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="pl-11">
-                  <p className="text-foreground">{hint.text}</p>
-                </AccordionContent>
-              </AccordionItem>
+          <div className="space-y-4">
+            {analysis.solution_steps.map((step, index) => (
+              <div
+                key={step.step}
+                className={cn(
+                  'relative pl-10 cursor-pointer rounded-lg transition-all duration-200',
+                  hasDiagram && 'hover:bg-accent/5 -mx-2 px-2 py-2',
+                  hasDiagram && activeStep === step.step && 'bg-accent/10'
+                )}
+                onClick={() => hasDiagram && setActiveStep(step.step)}
+              >
+                {/* Step number */}
+                <div
+                  className={cn(
+                    'absolute left-0 top-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-200',
+                    hasDiagram && activeStep === step.step
+                      ? 'bg-accent text-accent-foreground scale-110'
+                      : 'bg-accent/70 text-accent-foreground'
+                  )}
+                  style={hasDiagram ? { left: '8px', top: '8px' } : undefined}
+                >
+                  {step.step}
+                </div>
+                {/* Connector line */}
+                {index < analysis.solution_steps.length - 1 && (
+                  <div
+                    className={cn(
+                      'absolute w-0.5 bg-accent/30',
+                      hasDiagram
+                        ? 'left-[21px] top-[36px] h-[calc(100%-12px)]'
+                        : 'left-[13px] top-7 h-[calc(100%+0.5rem)]'
+                    )}
+                  />
+                )}
+                {/* Content */}
+                <div className={hasDiagram ? 'pb-2 pl-2' : 'pb-4'}>
+                  <h4 className="font-semibold text-foreground mb-1">{step.title}</h4>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{step.explanation}</p>
+                </div>
+              </div>
             ))}
-          </Accordion>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Teaching Tips */}
+      {analysis.teaching_tips.length > 0 && (
+        <Card className="glass border-primary/30">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2 text-primary">
+              <GraduationCap className="w-5 h-5" />
+              <CardTitle className="text-lg">Teaching Tips for Parents</CardTitle>
+            </div>
+            <CardDescription>
+              How to explain this concept to your child
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-3">
+              {analysis.teaching_tips.map((tip, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <Lightbulb className="w-4 h-4 mt-1 text-primary shrink-0" />
+                  <span className="text-foreground">{tip.tip}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Common Mistakes */}
       {analysis.common_mistakes.length > 0 && (

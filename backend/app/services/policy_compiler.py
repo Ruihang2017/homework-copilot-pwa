@@ -34,14 +34,14 @@ def get_abstraction_instruction(level: AbstractionLevel) -> str:
         return "Balance concrete examples with conceptual explanations."
 
 
-def get_hint_depth_instruction(depth: HintDepth) -> str:
-    """Get instruction based on hint depth preference."""
+def get_explanation_depth_instruction(depth: HintDepth) -> str:
+    """Get instruction based on explanation depth preference."""
     if depth == HintDepth.LIGHT_HINTS:
-        return "Provide light, minimal hints that gently guide without revealing the approach."
+        return "Keep explanations concise. Focus on key steps without extensive detail."
     elif depth == HintDepth.STEP_BY_STEP:
-        return "Provide detailed, step-by-step guidance with scaffolded questions."
+        return "Provide detailed explanations with thorough breakdowns of each step."
     else:  # MODERATE
-        return "Provide moderate guidance with clear guiding questions."
+        return "Provide clear explanations with moderate detail."
 
 
 def compile_policy(
@@ -75,7 +75,7 @@ def compile_policy(
         mastery = 0.5
     
     abstraction_instruction = get_abstraction_instruction(abstraction)
-    hint_instruction = get_hint_depth_instruction(hint_depth)
+    explanation_instruction = get_explanation_depth_instruction(hint_depth)
     
     # Build language instruction
     lang = global_state.language
@@ -102,13 +102,13 @@ Curriculum: {curriculum}
 
 Core Rules:
 1. You are helping the PARENT understand the question so they can guide their child.
-2. NEVER give the answer directly unless explicitly requested twice.
-3. Focus on the learning process, not just getting the right answer.
-4. Provide exactly 3 progressive hints, each more specific than the last.
+2. Provide a complete step-by-step solution that walks through how to solve the problem.
+3. Include teaching tips to help parents explain the concepts to their child.
+4. Focus on both the solution AND the learning process.
 
 Explanation Style:
 {abstraction_instruction}
-{hint_instruction}
+{explanation_instruction}
 {mastery_instruction}
 
 Output Format:
@@ -118,10 +118,34 @@ You must respond with valid JSON only. The JSON must contain:
 - "parent_context": An object with:
   - "what_it_tests": Array of skills being tested
   - "key_idea": The main concept parents should understand
-- "hints": Array of exactly 3 hints, each with "stage" (1, 2, or 3) and "text"
+- "solution_steps": Array of solution steps, each with:
+  - "step": Step number (1, 2, 3, etc.)
+  - "title": Short title for the step (e.g., "Understand the shape")
+  - "explanation": Detailed explanation of this step
+- "teaching_tips": Array of tips for parents on how to explain to their child, each with:
+  - "tip": The teaching tip text
 - "common_mistakes": Array of common mistakes to watch for
 
-Remember: Guide, don't solve. The goal is learning, not just correct answers."""
+GEOMETRY DIAGRAMS:
+For geometry questions, you MUST also include a "diagram" field with an interactive diagram spec:
+- "diagram": An object with:
+  - "viewBox": {{"width": 400, "height": 300, "padding": 20}}
+  - "elements": Array of diagram elements, each with:
+    - "id": Unique identifier (e.g., "triangle1", "line_height")
+    - "type": One of "polygon", "circle", "arc", "line", "point", "angle", "label"
+    - "highlightSteps": Array of step numbers when this element should be highlighted
+    - For polygon/line: "points" array of [x, y] coordinates
+    - For circle: "center" [x, y] and "radius" number
+    - For arc (semicircle): "center", "radius", "startAngle", "endAngle" (degrees, 0=right, 90=down)
+    - For point: "position" [x, y]
+    - For angle: "vertex" [x, y] and "rays" array of two [x, y] endpoints
+    - Optional: "style" ("solid" or "dashed"), "label" {{"text": "7 cm", "position": "bottom"}}
+    - Optional: "labels" array for multiple labels on one element
+
+Make the diagram coordinates fit within the viewBox. Use highlightSteps to link elements to solution steps.
+Example: A triangle highlighted in step 1 would have "highlightSteps": [1].
+
+Write the solution as you would explain it to the parent, clearly and step-by-step."""
 
     return policy.strip()
 
@@ -136,11 +160,13 @@ def compile_analysis_prompt(image_description: str | None = None) -> str:
     Returns:
         User prompt string
     """
-    return """Analyze this homework question image. Identify:
+    return """Analyze this homework question image and provide:
 1. What subject and topic this question belongs to
 2. What skills and concepts it tests
 3. The key idea that parents need to understand
-4. Three progressive hints to guide (not solve)
-5. Common mistakes children make on this type of question
+4. A complete step-by-step solution showing how to solve the problem
+5. Teaching tips for parents on how to explain this to their child
+6. Common mistakes children make on this type of question
+7. For GEOMETRY questions: Generate an interactive diagram spec that visualizes the problem
 
 Respond with valid JSON only."""

@@ -52,9 +52,14 @@ export interface TopicState {
 }
 
 // Question types
-export interface Hint {
-  stage: number
-  text: string
+export interface SolutionStep {
+  step: number
+  title: string
+  explanation: string
+}
+
+export interface TeachingTip {
+  tip: string
 }
 
 export interface ParentContext {
@@ -62,12 +67,57 @@ export interface ParentContext {
   key_idea: string
 }
 
+// Diagram types for geometry questions
+export interface DiagramLabel {
+  text: string
+  position: 'top' | 'bottom' | 'left' | 'right' | 'center'
+}
+
+export interface DiagramViewBox {
+  width: number
+  height: number
+  padding: number
+}
+
+export type DiagramElementType = 'polygon' | 'circle' | 'arc' | 'line' | 'point' | 'angle' | 'label'
+
+export interface DiagramElement {
+  id: string
+  type: DiagramElementType
+  highlightSteps: number[]
+  // Polygon/Line: array of [x, y] coordinates
+  points?: [number, number][]
+  // Circle/Arc: center point and radius
+  center?: [number, number]
+  radius?: number
+  // Arc specific: angles in degrees
+  startAngle?: number
+  endAngle?: number
+  // Point specific: single position
+  position?: [number, number]
+  // Angle marker: vertex and two ray endpoints
+  vertex?: [number, number]
+  rays?: [number, number][]
+  // Styling
+  style?: 'solid' | 'dashed'
+  // Labels
+  label?: DiagramLabel
+  labels?: DiagramLabel[]
+}
+
+export interface DiagramSpec {
+  viewBox: DiagramViewBox
+  elements: DiagramElement[]
+}
+
 export interface AnalysisResponse {
   subject: string
   topic: string
   parent_context: ParentContext
-  hints: Hint[]
+  solution_steps: SolutionStep[]
+  teaching_tips: TeachingTip[]
   common_mistakes: string[]
+  diagram?: DiagramSpec | null
 }
 
 export interface Question {

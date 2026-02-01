@@ -1,4 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// In production (Docker), use empty string so requests go to same origin (nginx handles routing)
+// In development, use localhost:8000 directly
+const API_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:8000')
 
 interface ApiOptions extends RequestInit {
   token?: string | null

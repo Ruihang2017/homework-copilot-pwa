@@ -8,6 +8,17 @@ interface DiagramRendererProps {
   className?: string
 }
 
+type SvgTextAnchor = 'start' | 'middle' | 'end' | 'inherit'
+type SvgDominantBaseline =
+  | 'auto'
+  | 'middle'
+  | 'hanging'
+  | 'alphabetic'
+  | 'central'
+  | 'text-before-edge'
+  | 'text-after-edge'
+  | 'inherit'
+
 // Color palette for kid-friendly diagrams
 const COLORS = {
   active: {
@@ -35,12 +46,12 @@ function isElementActive(element: DiagramElement, activeStep: number | null): bo
 function getLabelPosition(
   label: DiagramLabel,
   element: DiagramElement
-): { x: number; y: number; anchor: string; baseline: string } {
+): { x: number; y: number; anchor: SvgTextAnchor; baseline: SvgDominantBaseline } {
   // Default position calculation based on element type and label position
   let x = 0
   let y = 0
-  let anchor = 'middle'
-  let baseline = 'middle'
+  let anchor: SvgTextAnchor = 'middle'
+  let baseline: SvgDominantBaseline = 'middle'
 
   if (element.type === 'line' && element.points && element.points.length >= 2) {
     const [p1, p2] = element.points

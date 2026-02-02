@@ -66,18 +66,68 @@ graph TB
     API --> Feedback
 ```
 
-## Quick Start
+## Quick Start (Docker)
+
+### Prerequisites
+
+- Docker & Docker Compose
+
+### 1. Create environment file
+
+Create a `.env` file in the project root with your API key(s):
+
+```bash
+cat > .env << 'EOF'
+OPENAI_API_KEY=sk-your-openai-api-key
+OPENAI_MODEL=gpt-4o
+SECRET_KEY=your-super-secret-key
+EOF
+```
+
+Optional OAuth (only if you plan to use Google/GitHub login):
+
+```
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+```
+
+### 2. Build and start the stack
+
+```bash
+docker-compose build
+docker-compose up -d
+```
+
+### 3. Run database migrations
+
+```bash
+docker-compose exec backend alembic upgrade head
+```
+
+### 4. Open the app
+
+Visit http://localhost
+
+You can also check the backend health endpoint at:
+
+```
+http://localhost/health
+```
+
+## Local Development (Non-Docker)
 
 ### Prerequisites
 
 - Node.js 18+
 - Python 3.11+
-- Docker & Docker Compose
+- Docker (for Postgres) or local Postgres install
 
 ### 1. Start the database
 
 ```bash
-docker-compose up -d
+docker-compose up -d postgres
 ```
 
 ### 2. Set up the backend
@@ -88,9 +138,9 @@ python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# Copy and configure environment
-cp .env.example .env
-# Edit .env with your API keys
+# Create .env and add your API keys
+# Example:
+# OPENAI_API_KEY=sk-your-key
 
 # Run migrations
 alembic upgrade head
@@ -112,6 +162,18 @@ npm run dev
 Visit http://localhost:5173
 
 ## Environment Variables
+
+### Docker (.env at project root)
+
+```
+OPENAI_API_KEY=your-openai-api-key
+OPENAI_MODEL=gpt-4o
+SECRET_KEY=your-secret-key-here
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+```
 
 ### Backend (.env)
 

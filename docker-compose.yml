@@ -56,13 +56,25 @@ services:
     container_name: homework-copilot-nginx
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - frontend_build:/usr/share/nginx/html:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
     depends_on:
       - backend
       - frontend
     restart: unless-stopped
+
+  # Certbot (run on demand)
+  certbot:
+    image: certbot/certbot
+    container_name: homework-copilot-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'echo \"Certbot container ready. Use: docker compose run --rm certbot ...\" && sleep 3600'"
 
 volumes:
   postgres_data:

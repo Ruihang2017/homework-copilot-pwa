@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { api, ApiError } from '@/lib/api'
@@ -21,6 +21,13 @@ export default function Capture() {
   const navigate = useNavigate()
   const { toast } = useToast()
 
+  // Assign stream to video element when both are available
+  useEffect(() => {
+    if (mode === 'camera' && stream && videoRef.current) {
+      videoRef.current.srcObject = stream
+    }
+  }, [mode, stream])
+
   const startCamera = useCallback(async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -29,10 +36,6 @@ export default function Capture() {
       })
       setStream(mediaStream)
       setMode('camera')
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream
-      }
     } catch (error) {
       console.error('Camera error:', error)
       toast({

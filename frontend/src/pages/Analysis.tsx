@@ -23,6 +23,7 @@ import {
   Shapes,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import MathText from '@/components/MathText'
 
 const FEEDBACK_OPTIONS: { type: FeedbackEventType; label: string; icon: React.ReactNode }[] = [
   { type: 'TOO_SIMPLE', label: 'Too Simple', icon: <ThumbsDown className="w-4 h-4" /> },
@@ -149,7 +150,7 @@ export default function Analysis() {
           </div>
           <div>
             <p className="text-sm text-muted-foreground mb-1">Key Idea:</p>
-            <p className="font-medium">{analysis.parent_context.key_idea}</p>
+            <p className="font-medium"><MathText>{analysis.parent_context.key_idea}</MathText></p>
           </div>
         </CardContent>
       </Card>
@@ -246,8 +247,8 @@ export default function Analysis() {
                 )}
                 {/* Content */}
                 <div className={hasDiagram ? 'pb-2 pl-2' : 'pb-4'}>
-                  <h4 className="font-semibold text-foreground mb-1">{step.title}</h4>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{step.explanation}</p>
+                  <h4 className="font-semibold text-foreground mb-1"><MathText>{step.title}</MathText></h4>
+                  <p className="text-muted-foreground whitespace-pre-wrap"><MathText>{step.explanation}</MathText></p>
                 </div>
               </div>
             ))}
@@ -272,7 +273,7 @@ export default function Analysis() {
               {analysis.teaching_tips.map((tip, i) => (
                 <li key={i} className="flex items-start gap-3">
                   <Lightbulb className="w-4 h-4 mt-1 text-primary shrink-0" />
-                  <span className="text-foreground">{tip.tip}</span>
+                    <span className="text-foreground"><MathText>{tip.tip}</MathText></span>
                 </li>
               ))}
             </ul>
@@ -294,7 +295,7 @@ export default function Analysis() {
               {analysis.common_mistakes.map((mistake, i) => (
                 <li key={i} className="flex items-start gap-2">
                   <Minus className="w-4 h-4 mt-1 text-destructive shrink-0" />
-                  <span>{mistake}</span>
+                    <span><MathText>{mistake}</MathText></span>
                 </li>
               ))}
             </ul>

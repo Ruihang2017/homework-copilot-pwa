@@ -60,7 +60,6 @@ class OpenAIResponsesProvider(LLMProvider):
                 },
             ],
             max_output_tokens=max_output_tokens,
-            temperature=temperature,
         )
 
         content = response.output_text
@@ -82,7 +81,6 @@ class OpenAIResponsesProvider(LLMProvider):
             model=model,
             input=input_messages,
             max_output_tokens=max_output_tokens,
-            temperature=temperature,
         )
 
         content = response.output_text

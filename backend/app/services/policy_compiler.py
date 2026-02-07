@@ -94,6 +94,19 @@ def compile_policy(
     else:
         mastery_instruction = ""
     
+    # Build optional curriculum alignment block
+    if curriculum_context:
+        curriculum_block = f"""
+Curriculum Alignment:
+The following are relevant syllabus outcomes and content descriptions for this topic and grade level:
+---
+{curriculum_context}
+---
+Use this curriculum information to align your explanation with what the student is expected to learn. Reference specific outcomes or content descriptions where appropriate.
+"""
+    else:
+        curriculum_block = ""
+
     # Build the policy
     policy = f"""You are a homework tutor helping a parent guide their {grade_desc} child through homework.
 Curriculum: {curriculum}
@@ -105,14 +118,7 @@ Core Rules:
 2. Provide a complete step-by-step solution that walks through how to solve the problem.
 3. Include teaching tips to help parents explain the concepts to their child.
 4. Focus on both the solution AND the learning process.
-{f"""
-Curriculum Alignment:
-The following are relevant syllabus outcomes and content descriptions for this topic and grade level:
----
-{curriculum_context}
----
-Use this curriculum information to align your explanation with what the student is expected to learn. Reference specific outcomes or content descriptions where appropriate.
-""" if curriculum_context else ""}
+{curriculum_block}
 Explanation Style:
 {abstraction_instruction}
 {explanation_instruction}

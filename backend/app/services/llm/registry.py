@@ -24,6 +24,7 @@ MODEL_REGISTRY: dict[str, dict] = {
         "api_model": "gpt-5.2",
         "supports_vision": True,
         "tier": "premium",
+        "description": "Most capable model. Best reasoning but slowest (~30s). Use for complex or multi-step problems.",
     },
     "gpt-5-mini": {
         "display_name": "GPT-5 Mini",
@@ -31,6 +32,7 @@ MODEL_REGISTRY: dict[str, dict] = {
         "api_model": "gpt-5-mini",
         "supports_vision": True,
         "tier": "standard",
+        "description": "Good balance of quality and speed (~15-20s). Suitable for most homework questions.",
     },
     # ── OpenAI Chat Completions API (GPT-4o) ──
     "gpt-4o": {
@@ -39,6 +41,7 @@ MODEL_REGISTRY: dict[str, dict] = {
         "api_model": "gpt-4o",
         "supports_vision": True,
         "tier": "standard",
+        "description": "Fast and reliable (~15-25s). Strong vision support. Recommended default.",
     },
     "gpt-4o-mini": {
         "display_name": "GPT-4o Mini (Budget)",
@@ -46,6 +49,7 @@ MODEL_REGISTRY: dict[str, dict] = {
         "api_model": "gpt-4o-mini",
         "supports_vision": True,
         "tier": "budget",
+        "description": "Fastest and cheapest (~5-10s). Good for simple questions. May struggle with complex problems.",
     },
 }
 
@@ -105,7 +109,7 @@ def list_models() -> list[dict]:
     Return the list of available models for the frontend.
 
     Returns:
-        List of dicts with id, display_name, tier, supports_vision
+        List of dicts with id, display_name, tier, supports_vision, description
     """
     return [
         {
@@ -113,6 +117,7 @@ def list_models() -> list[dict]:
             "display_name": info["display_name"],
             "tier": info["tier"],
             "supports_vision": info["supports_vision"],
+            "description": info.get("description", ""),
         }
         for model_id, info in MODEL_REGISTRY.items()
     ]

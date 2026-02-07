@@ -170,8 +170,8 @@ export default function Settings() {
                         )}
                       </div>
                     </div>
-                    {model.supports_vision && (
-                      <p className="text-xs text-muted-foreground mt-1">Supports image analysis</p>
+                    {model.description && (
+                      <p className="text-xs text-muted-foreground mt-1">{model.description}</p>
                     )}
                   </div>
                 ))}

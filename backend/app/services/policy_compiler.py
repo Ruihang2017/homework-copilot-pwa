@@ -79,10 +79,8 @@ def compile_policy(
     
     # Build language instruction
     lang = global_state.language
-    if lang == "zh_en":
-        language_instruction = "Respond in both English and Chinese (中文). For mathematical terms, provide both the English term and Chinese translation."
-    elif lang == "zh":
-        language_instruction = "Respond entirely in Chinese (中文)."
+    if lang == "zh":
+        language_instruction = "Respond entirely in Chinese."
     else:
         language_instruction = "Respond in English."
     
@@ -130,28 +128,10 @@ You must respond with valid JSON only. The JSON must contain:
   - "step": Step number (1, 2, 3, etc.)
   - "title": Short title for the step (e.g., "Understand the shape")
   - "explanation": Detailed explanation of this step
-- "teaching_tips": Array of tips for parents on how to explain to their child, each with:
-  - "tip": The teaching tip text
-- "common_mistakes": Array of common mistakes to watch for
+- "teaching_tips": A single short paragraph (2-3 sentences) of the most important teaching advice for parents
+- "common_mistakes": A single short paragraph (2-3 sentences) summarizing the most common mistakes to watch for
 
-GEOMETRY DIAGRAMS:
-For geometry questions, you MUST also include a "diagram" field with an interactive diagram spec:
-- "diagram": An object with:
-  - "viewBox": {{"width": 400, "height": 300, "padding": 20}}
-  - "elements": Array of diagram elements, each with:
-    - "id": Unique identifier (e.g., "triangle1", "line_height")
-    - "type": One of "polygon", "circle", "arc", "line", "point", "angle", "label"
-    - "highlightSteps": Array of step numbers when this element should be highlighted
-    - For polygon/line: "points" array of [x, y] coordinates
-    - For circle: "center" [x, y] and "radius" number
-    - For arc (semicircle): "center", "radius", "startAngle", "endAngle" (degrees, 0=right, 90=down)
-    - For point: "position" [x, y]
-    - For angle: "vertex" [x, y] and "rays" array of two [x, y] endpoints
-    - Optional: "style" ("solid" or "dashed"), "label" {{"text": "7 cm", "position": "bottom"}}
-    - Optional: "labels" array for multiple labels on one element
-
-Make the diagram coordinates fit within the viewBox. Use highlightSteps to link elements to solution steps.
-Example: A triangle highlighted in step 1 would have "highlightSteps": [1].
+For GEOMETRY questions only: also include a "diagram" field with viewBox and elements (polygon, circle, line, point, angle, label with highlightSteps). For non-geometry questions, omit this field entirely.
 
 Write the solution as you would explain it to the parent, clearly and step-by-step."""
 

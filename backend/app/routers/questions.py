@@ -32,10 +32,6 @@ class SolutionStepResponse(BaseModel):
     explanation: str
 
 
-class TeachingTipResponse(BaseModel):
-    tip: str
-
-
 class ParentContextResponse(BaseModel):
     what_it_tests: list[str]
     key_idea: str
@@ -80,8 +76,8 @@ class AnalysisResponseSchema(BaseModel):
     topic: str
     parent_context: ParentContextResponse
     solution_steps: list[SolutionStepResponse]
-    teaching_tips: list[TeachingTipResponse]
-    common_mistakes: list[str]
+    teaching_tips: str
+    common_mistakes: str
     diagram: DiagramSpecResponse | None = None
 
 
@@ -265,9 +261,7 @@ async def analyze_homework(
                 SolutionStepResponse(step=s.step, title=s.title, explanation=s.explanation)
                 for s in analysis.solution_steps
             ],
-            teaching_tips=[
-                TeachingTipResponse(tip=t.tip) for t in analysis.teaching_tips
-            ],
+            teaching_tips=analysis.teaching_tips,
             common_mistakes=analysis.common_mistakes,
             diagram=diagram_response,
         ),
@@ -326,11 +320,8 @@ async def get_question(
                 )
                 for i, s in enumerate(response_data.get("solution_steps", []))
             ],
-            teaching_tips=[
-                TeachingTipResponse(tip=t.get("tip", ""))
-                for t in response_data.get("teaching_tips", [])
-            ],
-            common_mistakes=response_data.get("common_mistakes", []),
+            teaching_tips=_parse_teaching_tips(response_data.get("teaching_tips", "")),
+            common_mistakes=_parse_common_mistakes(response_data.get("common_mistakes", "")),
             diagram=_parse_diagram_from_json(response_data),
         ),
         created_at=question.created_at,
@@ -385,6 +376,31 @@ async def submit_feedback(
         event_type=feedback.event_type,
         created_at=feedback.created_at,
     )
+
+
+def _parse_teaching_tips(value) -> str:
+    """Parse teaching_tips from stored JSON — handles both old list and new string format."""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        # Old format: list of {"tip": "..."} dicts or plain strings
+        parts = []
+        for item in value:
+            if isinstance(item, dict):
+                parts.append(item.get("tip", ""))
+            else:
+                parts.append(str(item))
+        return " ".join(parts)
+    return ""
+
+
+def _parse_common_mistakes(value) -> str:
+    """Parse common_mistakes from stored JSON — handles both old list and new string format."""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return " ".join(str(item) for item in value)
+    return ""
 
 
 def _parse_diagram_from_json(response_data: dict) -> DiagramSpecResponse | None:
@@ -475,11 +491,8 @@ async def get_question_history(
                     )
                     for i, s in enumerate(q.response_json.get("solution_steps", []))
                 ],
-                teaching_tips=[
-                    TeachingTipResponse(tip=t.get("tip", ""))
-                    for t in q.response_json.get("teaching_tips", [])
-                ],
-                common_mistakes=q.response_json.get("common_mistakes", []),
+                teaching_tips=_parse_teaching_tips(q.response_json.get("teaching_tips", "")),
+                common_mistakes=_parse_common_mistakes(q.response_json.get("common_mistakes", "")),
                 diagram=_parse_diagram_from_json(q.response_json),
             ),
             created_at=q.created_at,

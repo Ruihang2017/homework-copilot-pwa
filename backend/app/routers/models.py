@@ -18,6 +18,7 @@ class ModelInfo(BaseModel):
     display_name: str
     tier: str
     supports_vision: bool
+    description: str
 
 
 @router.get("", response_model=list[ModelInfo])

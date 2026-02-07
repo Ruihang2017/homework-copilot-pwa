@@ -12,6 +12,7 @@ export interface ModelInfo {
   display_name: string
   tier: string
   supports_vision: boolean
+  description: string
 }
 
 export interface AuthTokens {
@@ -67,10 +68,6 @@ export interface SolutionStep {
   explanation: string
 }
 
-export interface TeachingTip {
-  tip: string
-}
-
 export interface ParentContext {
   what_it_tests: string[]
   key_idea: string
@@ -124,8 +121,8 @@ export interface AnalysisResponse {
   topic: string
   parent_context: ParentContext
   solution_steps: SolutionStep[]
-  teaching_tips: TeachingTip[]
-  common_mistakes: string[]
+  teaching_tips: string
+  common_mistakes: string
   diagram?: DiagramSpec | null
 }
 

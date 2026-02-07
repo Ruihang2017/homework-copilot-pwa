@@ -14,10 +14,6 @@ class SolutionStep(BaseModel):
     explanation: str
 
 
-class TeachingTip(BaseModel):
-    tip: str
-
-
 class ParentContext(BaseModel):
     what_it_tests: list[str]
     key_idea: str
@@ -69,6 +65,6 @@ class AnalysisResponse(BaseModel):
     topic: str
     parent_context: ParentContext
     solution_steps: list[SolutionStep]
-    teaching_tips: list[TeachingTip]
-    common_mistakes: list[str]
+    teaching_tips: str
+    common_mistakes: str
     diagram: DiagramSpec | None = None  # Optional diagram for geometry questions

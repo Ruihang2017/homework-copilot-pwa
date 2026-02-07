@@ -15,7 +15,6 @@ import {
   Target,
   ThumbsUp,
   ThumbsDown,
-  Minus,
   Check,
   HelpCircle,
   BookOpen,
@@ -257,7 +256,7 @@ export default function Analysis() {
       </Card>
 
       {/* Teaching Tips */}
-      {analysis.teaching_tips.length > 0 && (
+      {analysis.teaching_tips && (
         <Card className="glass border-primary/30">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2 text-primary">
@@ -269,20 +268,16 @@ export default function Analysis() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-3">
-              {analysis.teaching_tips.map((tip, i) => (
-                <li key={i} className="flex items-start gap-3">
-                  <Lightbulb className="w-4 h-4 mt-1 text-primary shrink-0" />
-                    <span className="text-foreground"><MathText>{tip.tip}</MathText></span>
-                </li>
-              ))}
-            </ul>
+            <div className="flex items-start gap-3">
+              <Lightbulb className="w-4 h-4 mt-1 text-primary shrink-0" />
+              <p className="text-foreground"><MathText>{analysis.teaching_tips}</MathText></p>
+            </div>
           </CardContent>
         </Card>
       )}
 
       {/* Common Mistakes */}
-      {analysis.common_mistakes.length > 0 && (
+      {analysis.common_mistakes && (
         <Card className="glass border-destructive/30">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2 text-destructive">
@@ -291,14 +286,10 @@ export default function Analysis() {
             </div>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-2">
-              {analysis.common_mistakes.map((mistake, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <Minus className="w-4 h-4 mt-1 text-destructive shrink-0" />
-                    <span><MathText>{mistake}</MathText></span>
-                </li>
-              ))}
-            </ul>
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-4 h-4 mt-1 text-destructive shrink-0" />
+              <p className="text-foreground"><MathText>{analysis.common_mistakes}</MathText></p>
+            </div>
           </CardContent>
         </Card>
       )}

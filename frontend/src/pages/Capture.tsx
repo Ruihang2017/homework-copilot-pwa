@@ -280,20 +280,27 @@ export default function Capture() {
 
           {/* Model selector */}
           {models.length > 0 && (
-            <div className="flex items-center gap-2">
-              <Cpu className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              <Select value={selectedModel} onValueChange={setSelectedModel}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Select model" />
-                </SelectTrigger>
-                <SelectContent>
-                  {models.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.display_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Cpu className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <Select value={selectedModel} onValueChange={setSelectedModel}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {models.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.display_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedModel && models.find((m) => m.id === selectedModel)?.description && (
+                <p className="text-xs text-muted-foreground pl-6">
+                  {models.find((m) => m.id === selectedModel)?.description}
+                </p>
+              )}
             </div>
           )}
 

@@ -20,6 +20,7 @@ from app.routers.auth import get_current_user
 from app.services.policy_compiler import compile_policy, compile_analysis_prompt
 from app.services.llm import get_orchestrator, AnalysisResponse
 from app.services.state_reducer import process_feedback, get_or_create_topic_state
+from app.services.rag import classify_topic, retrieve_curriculum_context
 
 router = APIRouter()
 settings = get_settings()
@@ -174,12 +175,27 @@ async def analyze_homework(
     async with aiofiles.open(image_path, "wb") as f:
         await f.write(image_data)
 
-    # Compile policy (no topic state for first question on a topic)
-    system_prompt = compile_policy(profile.global_state, None)
-    user_prompt = compile_analysis_prompt()
-
     # Resolve model: request param > user preference > server default
     resolved_model = model or current_user.preferred_model or None
+
+    # RAG: classify topic and retrieve curriculum context
+    curriculum_ctx = None
+    try:
+        topic_query = await classify_topic(image_data)
+        curriculum_ctx = await retrieve_curriculum_context(
+            topic_query=topic_query,
+            grade=profile.global_state.grade_alignment,
+            curriculum=profile.global_state.curriculum,
+        )
+    except Exception as e:
+        # RAG failure is non-fatal — analysis continues without curriculum context
+        print(f"[RAG] Retrieval step failed (non-fatal): {e}")
+
+    # Compile policy with optional curriculum context
+    system_prompt = compile_policy(
+        profile.global_state, None, curriculum_context=curriculum_ctx
+    )
+    user_prompt = compile_analysis_prompt()
 
     # Analyze with LLM
     try:

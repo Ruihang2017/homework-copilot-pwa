@@ -33,6 +33,9 @@ htmlcov/
 # Uploads (mounted as volume)
 uploads/
 
+# ChromaDB data (mounted as volume in production)
+chroma_data/
+
 # Misc
 *.log
 .DS_Store

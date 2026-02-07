@@ -48,6 +48,7 @@ def compile_policy(
     global_state: UserGlobalState,
     topic_state: ChildTopicState | None = None,
     session_hint_stage: int = 1,
+    curriculum_context: str | None = None,
 ) -> str:
     """
     Compile state into LLM system prompt.
@@ -56,6 +57,7 @@ def compile_policy(
         global_state: The child's global settings
         topic_state: Topic-specific state (if exists)
         session_hint_stage: Current hint stage in this session (1-3)
+        curriculum_context: Optional RAG-retrieved curriculum text to inject
     
     Returns:
         System prompt string for the LLM
@@ -103,7 +105,14 @@ Core Rules:
 2. Provide a complete step-by-step solution that walks through how to solve the problem.
 3. Include teaching tips to help parents explain the concepts to their child.
 4. Focus on both the solution AND the learning process.
-
+{f"""
+Curriculum Alignment:
+The following are relevant syllabus outcomes and content descriptions for this topic and grade level:
+---
+{curriculum_context}
+---
+Use this curriculum information to align your explanation with what the student is expected to learn. Reference specific outcomes or content descriptions where appropriate.
+""" if curriculum_context else ""}
 Explanation Style:
 {abstraction_instruction}
 {explanation_instruction}

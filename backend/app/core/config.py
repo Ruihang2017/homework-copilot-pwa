@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     upload_dir: str = "uploads"
     max_upload_size: int = 10 * 1024 * 1024  # 10MB
 
+    # RAG / ChromaDB
+    chroma_persist_dir: str = "chroma_data"
+    curriculum_docs_dir: str = "../curriculum_docs"
+
     class Config:
         env_file = ".env"
         case_sensitive = False

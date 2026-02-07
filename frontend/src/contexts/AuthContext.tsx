@@ -24,6 +24,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [searchParams, setSearchParams] = useSearchParams()
 
+  // Sync token when the API layer silently refreshes it
+  useEffect(() => {
+    const handleTokenRefresh = (e: Event) => {
+      const newToken = (e as CustomEvent).detail as string
+      if (newToken) {
+        setToken(newToken)
+      }
+    }
+    window.addEventListener('token-refreshed', handleTokenRefresh)
+    return () => window.removeEventListener('token-refreshed', handleTokenRefresh)
+  }, [])
+
   // Handle OAuth callback tokens from URL
   useEffect(() => {
     const accessToken = searchParams.get('access_token')

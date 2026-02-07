@@ -5,6 +5,7 @@ import Register from '@/pages/Register'
 import Dashboard from '@/pages/Dashboard'
 import Capture from '@/pages/Capture'
 import Analysis from '@/pages/Analysis'
+import Settings from '@/pages/Settings'
 import Layout from '@/components/Layout'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -41,6 +42,7 @@ function App() {
         <Route index element={<Dashboard />} />
         <Route path="capture/:profileId" element={<Capture />} />
         <Route path="analysis/:questionId" element={<Analysis />} />
+        <Route path="settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -71,6 +71,13 @@ export const api = {
       body: data ? JSON.stringify(data) : undefined,
     }),
 
+  patch: <T>(endpoint: string, data?: unknown, options?: ApiOptions) =>
+    request<T>(endpoint, {
+      ...options,
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+    }),
+
   delete: <T>(endpoint: string, options?: ApiOptions) =>
     request<T>(endpoint, { ...options, method: 'DELETE' }),
 

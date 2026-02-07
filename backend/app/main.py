@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 import os
 
 from app.core.config import get_settings
-from app.routers import auth, profiles, questions
+from app.routers import auth, profiles, questions, models
 
 
 settings = get_settings()
@@ -48,6 +48,7 @@ app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads"
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(profiles.router, prefix="/profiles", tags=["Child Profiles"])
 app.include_router(questions.router, prefix="/questions", tags=["Questions"])
+app.include_router(models.router, prefix="/models", tags=["Models"])
 
 
 @app.get("/health")

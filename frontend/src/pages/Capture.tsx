@@ -4,9 +4,16 @@ import { useAuth } from '@/contexts/AuthContext'
 import { api, ApiError } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
-import type { Question } from '@/types'
-import { Camera, Upload, X, Loader2, RotateCcw, ArrowLeft } from 'lucide-react'
+import type { Question, ModelInfo } from '@/types'
+import { Camera, Upload, X, Loader2, RotateCcw, ArrowLeft, Cpu } from 'lucide-react'
 
 export default function Capture() {
   const { profileId } = useParams<{ profileId: string }>()
@@ -14,12 +21,30 @@ export default function Capture() {
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [imageData, setImageData] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [models, setModels] = useState<ModelInfo[]>([])
+  const [selectedModel, setSelectedModel] = useState<string>('')
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
+
+  // Fetch available models and set default
+  useEffect(() => {
+    const fetchModels = async () => {
+      if (!token) return
+      try {
+        const data = await api.get<ModelInfo[]>('/models', { token })
+        setModels(data)
+        // Default to user preference or first model
+        setSelectedModel(user?.preferred_model || (data.length > 0 ? data[0].id : ''))
+      } catch (error) {
+        console.error('Failed to fetch models:', error)
+      }
+    }
+    fetchModels()
+  }, [token, user?.preferred_model])
 
   // Assign stream to video element when both are available
   useEffect(() => {
@@ -137,6 +162,9 @@ export default function Capture() {
       const formData = new FormData()
       formData.append('image', blob, 'homework.jpg')
       formData.append('child_profile_id', profileId)
+      if (selectedModel) {
+        formData.append('model', selectedModel)
+      }
 
       const question = await api.upload<Question>('/questions/analyze', formData, { token })
       navigate(`/analysis/${question.id}`)
@@ -249,6 +277,25 @@ export default function Capture() {
               className="w-full"
             />
           </div>
+
+          {/* Model selector */}
+          {models.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Cpu className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              <Select value={selectedModel} onValueChange={setSelectedModel}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Select model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {models.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.display_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="flex gap-3">
             <Button

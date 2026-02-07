@@ -18,7 +18,7 @@ from app.models.question import Question
 from app.models.feedback import FeedbackEvent, FeedbackEventType
 from app.routers.auth import get_current_user
 from app.services.policy_compiler import compile_policy, compile_analysis_prompt
-from app.services.openai_client import get_openai_client, AnalysisResponse
+from app.services.llm import get_orchestrator, AnalysisResponse
 from app.services.state_reducer import process_feedback, get_or_create_topic_state
 
 router = APIRouter()
@@ -140,6 +140,7 @@ async def analyze_homework(
     current_user: CurrentUser,
     image: UploadFile = File(...),
     child_profile_id: str = Form(...),
+    model: str | None = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Analyze a homework image and return guidance."""
@@ -181,11 +182,14 @@ async def analyze_homework(
     system_prompt = compile_policy(profile.global_state, None)
     user_prompt = compile_analysis_prompt()
 
-    # Analyze with OpenAI
+    # Resolve model: request param > user preference > server default
+    resolved_model = model or current_user.preferred_model or None
+
+    # Analyze with LLM
     try:
-        openai_client = get_openai_client()
-        analysis = await openai_client.analyze_homework_image(
-            image_data, system_prompt, user_prompt
+        orchestrator = get_orchestrator()
+        analysis = await orchestrator.analyze_homework_image(
+            image_data, system_prompt, user_prompt, model_id=resolved_model
         )
     except Exception as e:
         # Clean up saved image on failure

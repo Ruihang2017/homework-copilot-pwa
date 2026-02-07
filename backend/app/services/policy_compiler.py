@@ -113,10 +113,10 @@ Explanation Style:
 
 Math Formatting:
 IMPORTANT: Wrap ALL mathematical expressions in dollar-sign delimiters for LaTeX rendering.
-- Inline math: $expression$ (e.g., $\\frac{3}{4}$, $x^2 + 5$, $\\sqrt{18}$, $3 \\times 4 = 12$)
-- Use LaTeX notation: \\frac{a}{b} for fractions, ^{n} for exponents, \\sqrt{x} for roots, \\times for multiplication, \\div for division, \\pi for pi, etc.
-- Example: Instead of "3/4 + 1/2", write "$\\frac{3}{4} + \\frac{1}{2}$"
-- Example: Instead of "area = length × width", write "area $= \\text{length} \\times \\text{width}$"
+- Inline math: $expression$ (e.g., $\\frac{{3}}{{4}}$, $x^2 + 5$, $\\sqrt{{18}}$, $3 \\times 4 = 12$)
+- Use LaTeX notation: \\frac{{a}}{{b}} for fractions, ^{{n}} for exponents, \\sqrt{{x}} for roots, \\times for multiplication, \\div for division, \\pi for pi, etc.
+- Example: Instead of "3/4 + 1/2", write "$\\frac{{3}}{{4}} + \\frac{{1}}{{2}}$"
+- Example: Instead of "area = length × width", write "area $= \\text{{length}} \\times \\text{{width}}$"
 - Apply this to ALL text fields: key_idea, explanation, tip, common_mistakes
 
 Output Format:

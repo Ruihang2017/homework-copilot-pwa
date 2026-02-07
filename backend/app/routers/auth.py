@@ -69,10 +69,15 @@ class TokenResponse(BaseModel):
 class UserResponse(BaseModel):
     id: str
     email: str
+    preferred_model: str | None = None
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class UpdateUserRequest(BaseModel):
+    preferred_model: str | None = None
 
 
 # Dependency to get current user
@@ -191,6 +196,36 @@ async def get_me(current_user: CurrentUser):
     return UserResponse(
         id=str(current_user.id),
         email=current_user.email,
+        preferred_model=current_user.preferred_model,
+        created_at=current_user.created_at,
+    )
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_me(
+    data: UpdateUserRequest,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update current user settings (e.g., preferred AI model)."""
+    if data.preferred_model is not None:
+        # Validate model exists in registry
+        from app.services.llm.registry import MODEL_REGISTRY
+        if data.preferred_model not in MODEL_REGISTRY:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unknown model: {data.preferred_model}. "
+                       f"Available: {', '.join(MODEL_REGISTRY.keys())}",
+            )
+        current_user.preferred_model = data.preferred_model
+
+    await db.commit()
+    await db.refresh(current_user)
+
+    return UserResponse(
+        id=str(current_user.id),
+        email=current_user.email,
+        preferred_model=current_user.preferred_model,
         created_at=current_user.created_at,
     )
 

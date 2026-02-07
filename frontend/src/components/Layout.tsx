@@ -1,7 +1,7 @@
 import { Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
-import { LogOut, GraduationCap } from 'lucide-react'
+import { LogOut, GraduationCap, Settings } from 'lucide-react'
 
 export default function Layout() {
   const { logout, user } = useAuth()
@@ -31,6 +31,9 @@ export default function Layout() {
             <span className="text-sm text-muted-foreground hidden sm:inline">
               {user?.email}
             </span>
+            <Button variant="ghost" size="icon" onClick={() => navigate('/settings')}>
+              <Settings className="w-4 h-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={handleLogout}>
               <LogOut className="w-4 h-4" />
             </Button>

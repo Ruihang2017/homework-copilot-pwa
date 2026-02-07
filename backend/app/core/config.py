@@ -16,7 +16,7 @@ class Settings(BaseSettings):
 
     # OpenAI
     openai_api_key: str = ""
-    # openai_model: str = "gpt-4o-mini"
+    # openai_model: str = "gpt-5-mini"
     # openai_model: str = "gpt-4o"  # Balanced cost and reasoning with vision support
     openai_model: str = "gpt-5.2"  # Balanced cost and reasoning with vision support
 

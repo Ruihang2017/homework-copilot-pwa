@@ -25,6 +25,9 @@ class User(Base):
         SQLEnum(OAuthProvider), nullable=True
     )
     oauth_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    preferred_model: Mapped[str | None] = mapped_column(
+        String(50), nullable=True, server_default="gpt-4o"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )

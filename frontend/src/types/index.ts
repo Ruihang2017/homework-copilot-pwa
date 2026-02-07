@@ -2,7 +2,16 @@
 export interface User {
   id: string
   email: string
+  preferred_model: string | null
   created_at: string
+}
+
+// Model types
+export interface ModelInfo {
+  id: string
+  display_name: string
+  tier: string
+  supports_vision: boolean
 }
 
 export interface AuthTokens {

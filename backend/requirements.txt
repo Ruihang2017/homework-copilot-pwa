@@ -19,9 +19,9 @@ itsdangerous==2.1.2
 # OpenAI
 openai>=2.15.0
 
-# Validation and settings
-pydantic==2.6.1
-pydantic-settings==2.1.0
+# Validation and settings (pydantic>=2.7.4 required by langchain)
+pydantic>=2.7.4,<3
+pydantic-settings>=2.1.0
 email-validator==2.1.0
 
 # RAG / LangChain

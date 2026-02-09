@@ -4,41 +4,38 @@ RAG Retriever Service
 Queries the ChromaDB vector store at runtime to find curriculum chunks
 that are semantically similar to the detected homework topic.
 
+Uses the chromadb client directly (not langchain_chroma) to avoid
+LangChain Document deserialization that can raise KeyError('_type').
+
 How retrieval works:
-1. The topic_query string (e.g., "adding fractions with unlike denominators")
-   is converted into a 1536-dim vector using OpenAI embeddings.
-2. ChromaDB compares this vector against all stored curriculum chunk vectors
-   using cosine similarity (how "close" the meanings are).
-3. If a curriculum filter is provided (e.g., "NSW"), only chunks from that
-   curriculum are searched — this uses ChromaDB's metadata filtering.
-4. The top-K most similar chunk texts are concatenated and returned
-   for injection into the LLM system prompt.
+1. The topic_query string is converted into a vector using OpenAI embeddings.
+2. ChromaDB compares this vector against stored chunk vectors (cosine similarity).
+3. If a curriculum filter is provided, only chunks from that curriculum are searched.
+4. The top-K chunk texts are concatenated and returned for the LLM system prompt.
 """
 
 import os
-from functools import lru_cache
+from types import SimpleNamespace
 
+import chromadb
 from langchain_openai import OpenAIEmbeddings
-from langchain_chroma import Chroma
 
 from app.core.config import get_settings
 
 
-# ── Singleton Vector Store ───────────────────────────────────────────────────
+# ── Singleton: chromadb client + collection + embeddings ──────────────────────
 
-_vector_store: Chroma | None = None
+_rag_store: SimpleNamespace | None = None
 
 
-def _get_vector_store() -> Chroma | None:
+def _get_vector_store() -> SimpleNamespace | None:
     """
-    Get or create the ChromaDB vector store connection (lazy singleton).
-
-    Returns None if the ChromaDB directory doesn't exist yet
-    (i.e., ingestion hasn't been run).
+    Get or create ChromaDB connection using chromadb client directly
+    (avoids langchain_chroma so we never touch Document/_type deserialization).
     """
-    global _vector_store
-    if _vector_store is not None:
-        return _vector_store
+    global _rag_store
+    if _rag_store is not None:
+        return _rag_store
 
     settings = get_settings()
     persist_dir = settings.chroma_persist_dir
@@ -47,20 +44,30 @@ def _get_vector_store() -> Chroma | None:
         print("[RAG] ChromaDB directory not found — RAG disabled (run ingestion first)")
         return None
 
-    embeddings = OpenAIEmbeddings(
-        model="text-embedding-3-small",
-        openai_api_key=settings.openai_api_key,
-    )
+    try:
+        client = chromadb.PersistentClient(path=persist_dir)
+        collection = client.get_or_create_collection("curriculum")
+        embeddings = OpenAIEmbeddings(
+            model="text-embedding-3-small",
+            openai_api_key=settings.openai_api_key,
+        )
+    except Exception as e:
+        if str(e) == "'_type'":
+            print(
+                "[RAG] Failed to load ChromaDB index: incompatible persisted format "
+                "(missing '_type'). Re-run ingestion to rebuild index."
+            )
+        else:
+            print(f"[RAG] Failed to load ChromaDB: {e}")
+        return None
 
-    _vector_store = Chroma(
-        persist_directory=persist_dir,
-        embedding_function=embeddings,
-        collection_name="curriculum",
-    )
-
-    count = _vector_store._collection.count()
+    count = collection.count()
     print(f"[RAG] ChromaDB loaded: {count} chunks available")
-    return _vector_store
+    _rag_store = SimpleNamespace(
+        collection=collection,
+        embedding_function=embeddings,
+    )
+    return _rag_store
 
 
 def get_vector_store_status() -> dict:
@@ -85,14 +92,13 @@ def get_vector_store_status() -> dict:
             "message": "Failed to load ChromaDB.",
         }
 
-    collection = store._collection
+    collection = store.collection
     count = collection.count()
 
-    # Get unique curricula from metadata
     try:
         all_meta = collection.get(include=["metadatas"])
         curricula = sorted(set(
-            m.get("curriculum", "unknown")
+            (m or {}).get("curriculum", "unknown")
             for m in all_meta["metadatas"]
         ))
     except Exception:
@@ -148,28 +154,36 @@ async def retrieve_curriculum_context(
     enriched_query = f"{grade_readable} {topic_query}"
 
     try:
-        results = store.similarity_search(
-            query=enriched_query,
-            k=top_k,
-            filter=where_filter,
+        coll = store.collection
+        embed_fn = store.embedding_function
+        query_embedding = embed_fn.embed_query(enriched_query)
+        result = coll.query(
+            query_embeddings=[query_embedding],
+            n_results=top_k,
+            where=where_filter,
+            include=["documents", "metadatas"],
         )
+        # result["documents"] = [[doc1, doc2, ...]], result["metadatas"] = [[meta1, ...]]
+        docs_list = result["documents"][0] if result["documents"] else []
+        metas_list = result["metadatas"][0] if result["metadatas"] else []
     except Exception as e:
         print(f"[RAG] Retrieval failed: {e}")
         return None
 
-    if not results:
+    if not docs_list:
         print(f"[RAG] No results for query: {enriched_query}")
         return None
 
-    # Format the retrieved chunks with their source info
+    # Format the retrieved chunks with their source info (raw dicts, no Document)
     chunks = []
-    for i, doc in enumerate(results, 1):
-        source = doc.metadata.get("source_file", "unknown")
-        cur = doc.metadata.get("curriculum", "unknown")
+    for i, (text, meta) in enumerate(zip(docs_list, metas_list)):
+        meta = meta or {}
+        source = meta.get("source_file", "unknown")
+        cur = meta.get("curriculum", "unknown")
         chunks.append(
-            f"[{cur} — {source}]\n{doc.page_content.strip()}"
+            f"[{cur} — {source}]\n{(text or '').strip()}"
         )
 
     context = "\n\n---\n\n".join(chunks)
-    print(f"[RAG] Retrieved {len(results)} chunks for: {enriched_query}")
+    print(f"[RAG] Retrieved {len(chunks)} chunks for: {enriched_query}")
     return context

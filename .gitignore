@@ -29,3 +29,7 @@ build/
 
 # Uploads
 uploads/
+
+# Local Docker override (EC2 uses production nginx.conf + certs)
+docker-compose.override.yml
+nginx/nginx.local.conf

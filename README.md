@@ -101,6 +101,20 @@ When a homework image is submitted:
 
 - Docker & Docker Compose
 
+### Local vs production (nginx)
+
+- **Production (e.g. EC2):** Uses `nginx/nginx.conf` with HTTPS and Let’s Encrypt certs. No override file.
+- **Local (e.g. your Mac):** The main nginx config expects certs that don’t exist locally, so nginx would fail. Use the **local override** so nginx runs HTTP-only:
+  1. Create `docker-compose.override.yml` in the project root with:
+     ```yaml
+     services:
+       nginx:
+         volumes:
+           - ./nginx/nginx.local.conf:/etc/nginx/conf.d/default.conf:ro
+     ```
+  2. This file is in `.gitignore` — do not commit it. That way EC2 never sees it and keeps using the production config and certs.
+  3. The repo includes `nginx/nginx.local.conf` (HTTP on port 80, no SSL) for local use.
+
 ### 1. Create environment file
 
 Create a `.env` file in the project root with your API key(s):
@@ -145,7 +159,7 @@ This processes the curriculum PDFs/DOCX files into ChromaDB embeddings. Only nee
 
 ### 5. Open the app
 
-Visit http://localhost
+Visit http://localhost (or https://your-domain if running in production with certs).
 
 You can also check the backend health endpoint at:
 
@@ -261,7 +275,8 @@ homework-copilot-pwa/
 │   │   └── types/              # TypeScript types
 │   └── public/
 ├── nginx/
-│   └── nginx.conf              # Reverse proxy configuration
+│   ├── nginx.conf              # Production: HTTPS + Let’s Encrypt (used on EC2)
+│   └── nginx.local.conf        # Local: HTTP only (used via docker-compose.override.yml)
 └── backend/
     ├── alembic/                # Database migrations
     ├── chroma_data/            # ChromaDB vector store (auto-generated)

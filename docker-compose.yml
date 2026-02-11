@@ -20,9 +20,7 @@ services:
 
   # FastAPI Backend
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ${DOCKERHUB_USER:-your-dockerhub-user}/homework-copilot-backend:latest
     container_name: homework-copilot-backend
     environment:
       - DATABASE_URL=postgresql+asyncpg://homework_user:homework_pass@postgres:5432/homework_copilot
@@ -43,9 +41,7 @@ services:
 
   # Frontend Builder + Nginx
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: ${DOCKERHUB_USER:-your-dockerhub-user}/homework-copilot-frontend:latest
     container_name: homework-copilot-frontend
     volumes:
       - frontend_build:/frontend_build

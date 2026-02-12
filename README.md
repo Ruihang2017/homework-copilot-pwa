@@ -103,16 +103,18 @@ When a homework image is submitted:
 
 ### Local vs production (nginx)
 
-- **Production (e.g. EC2):** Uses `nginx/nginx.conf` with HTTPS and Let’s Encrypt certs. No override file.
-- **Local (e.g. your Mac):** The main nginx config expects certs that don’t exist locally, so nginx would fail. Use the **local override** so nginx runs HTTP-only:
+- **Production (e.g. EC2):** Uses the `homework-copilot-nginx` image (config baked in) and named volumes for certbot. No project files needed on the server — see *Deploying on EC2* below.
+- **Local (e.g. your Mac):** Use the **local override** so nginx runs HTTP-only (no SSL):
   1. Create `docker-compose.override.yml` in the project root with:
      ```yaml
      services:
        nginx:
+         image: nginx:alpine
          volumes:
            - ./nginx/nginx.local.conf:/etc/nginx/conf.d/default.conf:ro
+           - frontend_build:/usr/share/nginx/html:ro
      ```
-  2. This file is in `.gitignore` — do not commit it. That way EC2 never sees it and keeps using the production config and certs.
+  2. This file is in `.gitignore` — do not commit it.
   3. The repo includes `nginx/nginx.local.conf` (HTTP on port 80, no SSL) for local use.
 
 ### 1. Create environment file
@@ -172,6 +174,43 @@ Check RAG status:
 ```
 http://localhost/rag/status
 ```
+
+### Deploying on EC2 (no project clone)
+
+You can run production using **only Docker images** — no need to clone the repo or keep any project code on EC2.
+
+1. **Build and push images** from your machine (or CI), once per release:
+   ```bash
+   export DOCKERHUB_USER=your-dockerhub-username
+   docker build -t $DOCKERHUB_USER/homework-copilot-backend:latest ./backend && docker push $DOCKERHUB_USER/homework-copilot-backend:latest
+   docker build -t $DOCKERHUB_USER/homework-copilot-frontend:latest ./frontend && docker push $DOCKERHUB_USER/homework-copilot-frontend:latest
+   docker build -t $DOCKERHUB_USER/homework-copilot-nginx:latest ./nginx && docker push $DOCKERHUB_USER/homework-copilot-nginx:latest
+   ```
+
+2. **On EC2**, create a folder (e.g. `~/homework-copilot-deploy`) with **only** two files:
+
+   - **`docker-compose.yml`** — copy the same file from this repo (it uses `image:` and named volumes; no host paths for nginx or certbot).
+   - **`.env`** — set your Docker Hub username and secrets:
+     ```bash
+     DOCKERHUB_USER=your-dockerhub-username
+     SECRET_KEY=your-production-secret-key
+     OPENAI_API_KEY=sk-your-openai-api-key
+     OPENAI_MODEL=gpt-4o
+     # Optional: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET
+     ```
+
+3. **Start the stack** (no git, no source code):
+   ```bash
+   docker compose pull
+   docker compose up -d
+   docker compose exec backend alembic upgrade head
+   ```
+   For RAG, run ingestion once (from a machine that has the repo, or copy the script):  
+   `docker compose exec backend python -m app.services.rag.ingest`
+
+4. **HTTPS (first time only):** Certbot data lives in named volumes. To obtain/renew certs, run certbot from the same compose project (e.g. from a one-off container that mounts the same volumes), or use a separate certbot setup and copy certs into the `certbot_conf` volume. The nginx image expects certs at `/etc/letsencrypt/live/your-domain/fullchain.pem` (and `privkey.pem`) inside the volume.
+
+You never need to edit code or clone the repo on EC2; updates are `docker compose pull && docker compose up -d`.
 
 ## Local Development (Non-Docker)
 

@@ -21,6 +21,7 @@ Usage:
 
 import os
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -169,11 +170,16 @@ def create_vector_store(chunks: list, persist_dir: str, openai_api_key: str) -> 
         openai_api_key=openai_api_key,
     )
 
-    # Remove old data if it exists (full re-ingest)
+    # Remove old data if it exists (full re-ingest).
+    # persist_dir can be a mounted Docker volume path, so remove contents
+    # without deleting the mount point directory itself.
     if os.path.exists(persist_dir):
-        import shutil
         print(f"[Ingest] Removing old ChromaDB data at {persist_dir}")
-        shutil.rmtree(persist_dir)
+        for entry in os.scandir(persist_dir):
+            if entry.is_dir(follow_symlinks=False):
+                shutil.rmtree(entry.path)
+            else:
+                os.remove(entry.path)
 
     print(f"[Ingest] Storing {len(chunks)} chunks in ChromaDB at {persist_dir}...")
     vector_store = Chroma.from_documents(

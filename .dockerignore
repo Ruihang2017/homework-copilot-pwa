@@ -1,0 +1,45 @@
+# Only used when building backend from project root context
+# (docker build -f backend/Dockerfile .)
+
+# Exclude frontend and nginx (not needed in backend image)
+frontend/
+nginx/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Backend runtime data (mounted as volumes)
+backend/uploads/
+backend/chroma_data/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Misc
+*.log
+.DS_Store
+Thumbs.db

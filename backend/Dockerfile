@@ -1,4 +1,6 @@
 # Backend Dockerfile for FastAPI
+# Build context must be the PROJECT ROOT (not ./backend)
+#   docker build -f backend/Dockerfile -t <image> .
 FROM python:3.10-slim
 
 # Set working directory
@@ -15,11 +17,14 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install -r requirements.txt
 
 # Copy application code
-COPY . .
+COPY backend/ .
+
+# Copy curriculum documents for RAG ingestion
+COPY curriculum_docs/ /curriculum_docs
 
 # Create uploads directory
 RUN mkdir -p /app/uploads

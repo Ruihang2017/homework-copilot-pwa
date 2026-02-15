@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
@@ -37,6 +35,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health\")"']
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   # Frontend Builder + Nginx
@@ -64,8 +67,10 @@ services:
       - certbot_conf:/etc/letsencrypt:ro
       - certbot_www:/var/www/certbot:ro
     depends_on:
-      - backend
-      - frontend
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
     restart: unless-stopped
 
   # Certbot (run on demand; uses named volumes, no host paths)

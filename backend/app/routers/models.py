@@ -22,6 +22,7 @@ class ModelInfo(BaseModel):
 
 
 @router.get("", response_model=list[ModelInfo])
+@router.get("/", response_model=list[ModelInfo])
 async def get_available_models():
     """Return the list of available AI models."""
     return list_models()

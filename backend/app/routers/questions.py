@@ -132,6 +132,22 @@ async def verify_profile_ownership(
 
 
 # Endpoints
+def _parse_profile_id(value: str):
+    """Parse and validate child_profile_id; raise HTTP 400 if invalid."""
+    if not value or not value.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="child_profile_id is required",
+        )
+    try:
+        return uuid.UUID(value.strip())
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="child_profile_id must be a valid UUID",
+        )
+
+
 @router.post("/analyze", response_model=QuestionResponse)
 async def analyze_homework(
     current_user: CurrentUser,
@@ -141,9 +157,10 @@ async def analyze_homework(
     db: AsyncSession = Depends(get_db),
 ):
     """Analyze a homework image and return guidance."""
+    profile_uuid = _parse_profile_id(child_profile_id)
     # Verify profile ownership
     profile = await verify_profile_ownership(
-        uuid.UUID(child_profile_id), current_user, db
+        profile_uuid, current_user, db
     )
 
     if not profile.global_state:

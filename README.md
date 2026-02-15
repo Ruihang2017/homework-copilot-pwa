@@ -103,7 +103,7 @@ When a homework image is submitted:
 
 ### Local vs production (nginx)
 
-- **Production (e.g. EC2):** Uses the `homework-copilot-nginx` image (config baked in) and named volumes for certbot. No project files needed on the server — see *Deploying on EC2* below.
+- **Production (e.g. EC2):** Uses the `homework-copilot-nginx` image (config baked in) and named volumes for certbot. No project files needed on the server — see _Deploying on EC2_ below.
 - **Local (e.g. your Mac):** Use the **local override** so nginx runs HTTP-only (no SSL):
   1. Create `docker-compose.override.yml` in the project root with:
      ```yaml
@@ -123,6 +123,7 @@ Create a `.env` file in the project root with your API key(s):
 
 ```bash
 cat > .env << 'EOF'
+DOCKERHUB_USER=your-dockerhub-username
 OPENAI_API_KEY=sk-your-openai-api-key
 OPENAI_MODEL=gpt-4o
 SECRET_KEY=your-super-secret-key
@@ -138,10 +139,12 @@ GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
 ```
 
-### 2. Build and start the stack
+### 2. Build and start the stack (local test)
 
 ```bash
-docker compose build
+docker build -f backend/Dockerfile -t $DOCKERHUB_USER/homework-copilot-backend:latest .
+docker build -t $DOCKERHUB_USER/homework-copilot-frontend:latest ./frontend
+docker build -t $DOCKERHUB_USER/homework-copilot-nginx:latest ./nginx
 docker compose up -d
 ```
 
@@ -151,13 +154,14 @@ docker compose up -d
 docker compose exec backend alembic upgrade head
 ```
 
-### 4. Ingest curriculum documents (RAG)
+### 4. Ingest curriculum documents (RAG, local)
 
 ```bash
 docker compose exec backend python -m app.services.rag.ingest
 ```
 
 This processes the curriculum PDFs/DOCX files into ChromaDB embeddings. Only needs to be run once, or after adding new curriculum documents.
+For small EC2 instances, prefer running ingestion locally (this step) and then copying prepared `chroma_data` to EC2.
 
 ### 5. Open the app
 
@@ -180,15 +184,15 @@ http://localhost/rag/status
 You can run production using **only Docker images** — no need to clone the repo or keep any project code on EC2.
 
 1. **Build and push images** from your machine (or CI), once per release:
+
    ```bash
    export DOCKERHUB_USER=your-dockerhub-username
-   docker build -t $DOCKERHUB_USER/homework-copilot-backend:latest ./backend && docker push $DOCKERHUB_USER/homework-copilot-backend:latest
-   docker build -t $DOCKERHUB_USER/homework-copilot-frontend:latest ./frontend && docker push $DOCKERHUB_USER/homework-copilot-frontend:latest
-   docker build -t $DOCKERHUB_USER/homework-copilot-nginx:latest ./nginx && docker push $DOCKERHUB_USER/homework-copilot-nginx:latest
+   docker build --platform linux/amd64 -f backend/Dockerfile -t $DOCKERHUB_USER/homework-copilot-backend:latest . && docker push $DOCKERHUB_USER/homework-copilot-backend:latest
+   docker build --platform linux/amd64 -t $DOCKERHUB_USER/homework-copilot-frontend:latest ./frontend && docker push $DOCKERHUB_USER/homework-copilot-frontend:latest
+   docker build --platform linux/amd64 -t $DOCKERHUB_USER/homework-copilot-nginx:latest ./nginx && docker push $DOCKERHUB_USER/homework-copilot-nginx:latest
    ```
 
 2. **On EC2**, create a folder (e.g. `~/homework-copilot-deploy`) with **only** two files:
-
    - **`docker-compose.yml`** — copy the same file from this repo (it uses `image:` and named volumes; no host paths for nginx or certbot).
    - **`.env`** — set your Docker Hub username and secrets:
      ```bash
@@ -200,17 +204,50 @@ You can run production using **only Docker images** — no need to clone the rep
      ```
 
 3. **Start the stack** (no git, no source code):
+
    ```bash
    docker compose pull
    docker compose up -d
    docker compose exec backend alembic upgrade head
    ```
-   For RAG, run ingestion once (from a machine that has the repo, or copy the script):  
-   `docker compose exec backend python -m app.services.rag.ingest`
+
+   For RAG:
+   - If EC2 is large enough, run once: `docker compose exec backend python -m app.services.rag.ingest`
+   - If EC2 is small (recommended), run ingestion locally and copy the `chroma_data` volume to EC2.
 
 4. **HTTPS (first time only):** Certbot data lives in named volumes. To obtain/renew certs, run certbot from the same compose project (e.g. from a one-off container that mounts the same volumes), or use a separate certbot setup and copy certs into the `certbot_conf` volume. The nginx image expects certs at `/etc/letsencrypt/live/your-domain/fullchain.pem` (and `privkey.pem`) inside the volume.
 
 You never need to edit code or clone the repo on EC2; updates are `docker compose pull && docker compose up -d`.
+
+### Optional: Run RAG ingest locally and copy to EC2
+
+If your EC2 instance is low-memory, avoid running ingestion in production.
+
+1. **Run ingestion locally**:
+   ```bash
+   docker compose exec backend python -m app.services.rag.ingest
+   ```
+2. **Export local `chroma_data` volume**:
+   ```bash
+   LOCAL_CHROMA_VOLUME=$(docker volume ls --format '{{.Name}}' | grep '_chroma_data$' | head -n1)
+   docker run --rm \
+     -v "$LOCAL_CHROMA_VOLUME":/data \
+     -v "$(pwd)/backup":/backup \
+     busybox sh -c "mkdir -p /backup && cd /data && tar czf /backup/chroma_data.tgz ."
+   ```
+3. **Copy archive to EC2**:
+   ```bash
+   scp backup/chroma_data.tgz ubuntu@YOUR_EC2_IP:~/chroma_data.tgz
+   ```
+4. **Import into EC2 volume** (adjust volume name if different):
+   ```bash
+   EC2_CHROMA_VOLUME=$(docker volume ls --format '{{.Name}}' | grep '_chroma_data$' | head -n1)
+   docker run --rm \
+     -v "$EC2_CHROMA_VOLUME":/data \
+     -v "$HOME":/backup \
+     busybox sh -c "rm -rf /data/* && tar xzf /backup/chroma_data.tgz -C /data"
+   docker compose restart backend
+   ```
 
 ## Local Development (Non-Docker)
 
@@ -346,6 +383,7 @@ To add new curriculum documents:
 1. Place PDF or DOCX files in the appropriate `curriculum_docs/` subfolder
 2. Name files descriptively (e.g., `NSW_NESA_Math_K-10_2022.docx`)
 3. Re-run ingestion:
+
    ```bash
    # Docker
    docker compose exec backend python -m app.services.rag.ingest
@@ -353,6 +391,7 @@ To add new curriculum documents:
    # Local
    cd backend && python -m app.services.rag.ingest
    ```
+
 4. Verify with `GET /rag/status` to check chunk count and curricula
 
 ## License
